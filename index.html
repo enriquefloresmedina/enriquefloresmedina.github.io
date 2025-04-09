@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>P!NG Location Tracker</title>
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h2>Live P!NG Location</h2>
+  <div id="map"></div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
+  <!-- Google Maps JS API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDrvYDacY8ZFDa4QjIJYS7z8M0giZSz_o8"></script>
+
+  <script>
+    // 1. Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "p-ng-4754b.firebaseapp.com",
+      databaseURL: "https://p-ng-4754b-default-rtdb.firebaseio.com/",
+      projectId: "p-ng-4754b",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 2. Initialize Google Map
+    let map;
+    let marker;
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 0, lng: 0 },
+        zoom: 15
+      });
+
+      // 3. Listen for location updates from Firebase
+      const locationRef = db.ref("location/coordinates");
+      locationRef.on("value", (snapshot) => {
+        const coordStr = snapshot.val();
+        if (!coordStr) return;
+
+        const [latStr, lngStr] = coordStr.split(",");
+        const lat = parseFloat(latStr);
+        const lng = parseFloat(lngStr);
+        const position = { lat, lng };
+
+        if (!marker) {
+          marker = new google.maps.Marker({
+            position,
+            map,
+            title: "P!NG Location"
+          });
+        } else {
+          marker.setPosition(position);
+        }
+
+        map.setCenter(position);
+      });
+    }
+
+    // Call initMap on window load
+    window.onload = initMap;
+  </script>
+</body>
+</html>
