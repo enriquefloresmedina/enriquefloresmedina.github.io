@@ -2,20 +2,56 @@
 <html>
 <head>
   <title>P!NG Location Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
+    body {
+      margin: 0;
+      font-family: "Roboto";
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin: 10px 0;
+    }
+
     #map {
-      height: 90vh;
+      flex: 1;
       width: 100%;
+    }
+
+    #sendPingButton {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      text-align: center;
+      cursor: pointer;
+      margin: 10px auto;
+      display: block;
+      width: 90%;
+      max-width: 300px;
+    }
+
+    #sendPingButton:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
   <h2>Live P!NG Location</h2>
   <div id="map"></div>
+  <button id="sendPingButton">Send P!NG</button>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
 
   <!-- Google Maps JS API -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDrvYDacY8ZFDa4QjIJYS7z8M0giZSz_o8"></script>
@@ -27,17 +63,26 @@
       authDomain: "p-ng-4754b.firebaseapp.com",
       databaseURL: "https://p-ng-4754b-default-rtdb.firebaseio.com/",
       projectId: "p-ng-4754b",
+      storageBucket: "p-ng-4754b.appspot.com",
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const storage = firebase.storage();
 
     // 2. Initialize Google Map
     let map;
     let marker;
+    let infoWindow;
+
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 0, lng: 0 },
-        zoom: 15
+        zoom: 15,
+      });
+
+      // Create an InfoWindow
+      infoWindow = new google.maps.InfoWindow({
+        content: "P!NG Location", // Text to display above the marker
       });
 
       // 3. Listen for location updates from Firebase
@@ -55,18 +100,69 @@
           marker = new google.maps.Marker({
             position,
             map,
-            title: "P!NG Location"
+            title: "P!NG Location",
           });
+          map.setCenter(position);
+
+          // Attach the InfoWindow to the marker
+          infoWindow.open(map, marker);
         } else {
           marker.setPosition(position);
-        }
+          map.setCenter(position);
 
-        map.setCenter(position);
+          // Update the InfoWindow position
+          infoWindow.setPosition(position);
+        }
       });
     }
 
     // Call initMap on window load
     window.onload = initMap;
+
+    // Add functionality to the "Send P!NG" button
+    document.getElementById("sendPingButton").addEventListener("click", async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Your browser does not support audio recording.");
+        return;
+      }
+
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const fileName = `audioMessage_${Date.now()}.webm`;
+
+          // Upload the audio file to Firebase Storage
+          const storageRef = storage.ref(`audioMessages/${fileName}`);
+          const snapshot = await storageRef.put(audioBlob);
+          const audioURL = await snapshot.ref.getDownloadURL();
+
+          // Update the database with the audio URL and a "new message" flag
+          await db.ref("messages").set({
+            audioURL,
+            newMessage: true,
+          });
+
+          alert("P!NG sent with audio message!");
+        };
+
+        // Start recording
+        mediaRecorder.start();
+        alert("Recording... Press OK to stop.");
+        setTimeout(() => mediaRecorder.stop(), 5000); // Automatically stop after 5 seconds
+      } catch (error) {
+        console.error("Error recording audio:", error);
+        alert("Failed to record audio. Please try again.");
+      }
+    });
   </script>
 </body>
 </html>
