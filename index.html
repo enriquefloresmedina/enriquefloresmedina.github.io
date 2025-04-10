@@ -139,20 +139,22 @@
 
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-          const fileName = `audioMessage_${Date.now()}.webm`;
 
-          // Upload the audio file to Firebase Storage
-          const storageRef = storage.ref(`audioMessages/${fileName}`);
-          const snapshot = await storageRef.put(audioBlob);
-          const audioURL = await snapshot.ref.getDownloadURL();
+          // Convert the audio blob to Base64
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Audio = reader.result.split(",")[1]; // Extract Base64 string
 
-          // Update the database with the audio URL and a "new message" flag
-          await db.ref("messages").set({
-            audioURL,
-            newMessage: true,
-          });
+            // Update the database with the Base64 audio and a "new message" flag
+            await db.ref("messages").set({
+              audioBase64: base64Audio,
+              newMessage: true,
+            });
 
-          alert("P!NG sent with audio message!");
+            alert("P!NG sent!");
+          };
+
+          reader.readAsDataURL(audioBlob); // Read the blob as a Base64 data URL
         };
 
         // Start recording
