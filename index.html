@@ -150,10 +150,10 @@
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-        const fileName = "audio.wav";
+        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+        const fileName = "audio.mp3";
 
-        // Upload the .wav file to Firebase Storage
+        // Upload the .mp3 file to Firebase Storage
         const storageRef = storage.ref(`app/${fileName}`);
         try {
           const snapshot = await storageRef.put(audioBlob);
