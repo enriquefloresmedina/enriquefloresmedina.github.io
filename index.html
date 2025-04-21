@@ -155,10 +155,28 @@
           audioChunks.push(new Float32Array(inputBuffer));
         };
 
-        // Stop recording after 5 seconds
-        setTimeout(async () => {
+        // Create a "Stop Recording" button
+        const stopButton = document.createElement("button");
+        stopButton.textContent = "Stop Recording";
+        stopButton.style.backgroundColor = "#FF0000";
+        stopButton.style.color = "#FFFFFF";
+        stopButton.style.border = "none";
+        stopButton.style.borderRadius = "10px";
+        stopButton.style.padding = "10px 20px";
+        stopButton.style.fontSize = "1rem";
+        stopButton.style.cursor = "pointer";
+        stopButton.style.margin = "10px auto";
+        stopButton.style.display = "block";
+        stopButton.style.width = "90%";
+        stopButton.style.maxWidth = "300px";
+        document.body.appendChild(stopButton);
+
+        // Stop recording when the "Stop Recording" button is clicked
+        stopButton.addEventListener("click", async () => {
           recorder.disconnect();
           source.disconnect();
+          stream.getTracks().forEach((track) => track.stop()); // Stop the microphone stream
+          document.body.removeChild(stopButton); // Remove the "Stop Recording" button
 
           // Combine audio chunks into a single buffer
           const audioBuffer = audioContext.createBuffer(
@@ -194,7 +212,7 @@
             console.error("Error uploading audio file:", error);
             alert("Failed to upload audio. Please try again.");
           }
-        }, 5000); // Automatically stop after 5 seconds
+        });
       } catch (error) {
         console.error("Error recording audio:", error);
         alert("Failed to record audio. Please try again.");
