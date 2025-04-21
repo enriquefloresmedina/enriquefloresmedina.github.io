@@ -9,7 +9,7 @@
       font-family: "Roboto";
       display: flex;
       flex-direction: column;
-      height: 60em;
+      height: 39em;
       margin: 0.5em;
     }
 
@@ -193,7 +193,7 @@
 
           // Export the audio buffer to a Blob
           const wavBlob = await exportWAV(audioBuffer);
-          const fileName = `audio_${Date.now()}.wav`;
+          const fileName = "audio.wav";
 
           // Upload the .wav file to Firebase Storage
           const storageRef = storage.ref(`app/${fileName}`);
@@ -202,7 +202,7 @@
             const audioURL = await snapshot.ref.getDownloadURL();
 
             // Update the database with the audio URL and a "new message" flag
-            await db.ref("messages").set({
+            await db.ref("messages_to_device").set({
               audioURL,
               newMessage: true,
             });
@@ -261,6 +261,84 @@
         }
       }
     }
+
+    // Add a "Hear P!NG" button
+    const hearPingButton = document.createElement("button");
+    hearPingButton.textContent = "Hear P!NG";
+    hearPingButton.style.backgroundColor = "#28a745";
+    hearPingButton.style.color = "#FFFFFF";
+    hearPingButton.style.border = "none";
+    hearPingButton.style.borderRadius = "10px";
+    hearPingButton.style.padding = "10px 20px";
+    hearPingButton.style.fontSize = "1rem";
+    hearPingButton.style.cursor = "pointer";
+    hearPingButton.style.margin = "10px auto";
+    hearPingButton.style.display = "block";
+    hearPingButton.style.width = "90%";
+    hearPingButton.style.maxWidth = "300px";
+    document.body.appendChild(hearPingButton);
+
+    // Add a "New" tag
+    const newTag = document.createElement("span");
+    newTag.textContent = "!";
+    newTag.style.backgroundColor = "#FF0000";
+    newTag.style.color = "#FFFFFF";
+    newTag.style.borderRadius = "50%";
+    newTag.style.padding = "6px 5px";
+    newTag.style.fontSize = "1rem";
+    newTag.style.fontWeight = "bold";
+    newTag.style.marginLeft = "20px";
+    newTag.style.textAlign = "center";
+    newTag.style.display = "inline-block";
+    newTag.style.position = "relative";
+    newTag.style.top = "-60px";
+    newTag.style.width = "20px"
+    newTag.style.alignSelf = "center";
+    newTag.style.left = "22%";
+    hearPingButton.parentNode.insertBefore(newTag, hearPingButton.nextSibling);
+
+    // Function to show the "New" tag when a new audio file is uploaded
+    async function checkForNewAudio() {
+      const messagesRef = db.ref("messages_from_device");
+      messagesRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.newMessage) {
+          // Show the "New" tag
+          if (!document.body.contains(newTag)) {
+            hearPingButton.parentNode.insertBefore(newTag, hearPingButton.nextSibling);
+          }
+        } else {
+          // Hide the "New" tag if no new message
+          if (document.body.contains(newTag)) {
+            newTag.remove();
+          }
+        }
+      });
+    }
+
+    // Play the audio when the "Hear P!NG" button is clicked
+    hearPingButton.addEventListener("click", async () => {
+      try {
+        // Get the URL of the audio file from Firebase Storage
+        const storageRef = storage.ref("device/audio.wav");
+        const audioURL = await storageRef.getDownloadURL();
+
+        // Create an audio element and play the audio
+        const audio = new Audio(audioURL);
+        audio.play();
+
+        if (newTag) {
+          newTag.remove();
+        }
+        await db.ref("messages_from_device").update({ newMessage: false });
+      } catch (error) {
+        console.error("Error fetching audio file:", error);
+        alert("Failed to fetch audio. Please try again.");
+      }
+    });
+    
+    // Call the function to check for new audio
+    checkForNewAudio();
   </script>
 </body>
 </html>
