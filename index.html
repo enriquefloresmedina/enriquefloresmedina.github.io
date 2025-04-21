@@ -51,6 +51,7 @@
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
 
@@ -60,15 +61,27 @@
   <script>
     // 1. Initialize Firebase
     const firebaseConfig = {
-      apiKey: "",
+      apiKey: "AIzaSyDM73Ld2nGP_adH6xE7tCrJvK6KH8-y3A4",
       authDomain: "p-ng-4754b.firebaseapp.com",
       databaseURL: "https://p-ng-4754b-default-rtdb.firebaseio.com/",
       projectId: "p-ng-4754b",
-      storageBucket: "p-ng-4754b.appspot.com",
+      storageBucket: "p-ng-4754b.firebasestorage.app",
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const storage = firebase.storage();
+
+    const email = "enriquef@mit.edu"; // Replace with your email
+    const password = "Campeada2."; // Replace with your password
+
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .then(() => {
+        console.log("User signed in successfully.");
+      })
+      .catch((error) => {
+        console.error("Error signing in:", error);
+        alert("Authentication failed. Please check your credentials.");
+      });
 
     // 2. Initialize Google Map
     let map;
@@ -120,52 +133,54 @@
     // Call initMap on window load
     window.onload = initMap;
 
-    // Add functionality to the "Send P!NG" button
     document.getElementById("sendPingButton").addEventListener("click", async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Your browser does not support audio recording.");
-        return;
-      }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Your browser does not support audio recording.");
+      return;
+    }
 
-      try {
-        // Request microphone access
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        const audioChunks = [];
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
 
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
-        };
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
 
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+        const fileName = `audio?${Date.now()}.wav`;
 
-          // Convert the audio blob to Base64
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const base64Audio = reader.result.split(",")[1]; // Extract Base64 string
+        // Upload the .wav file to Firebase Storage
+        const storageRef = storage.ref(`app/${fileName}`);
+        try {
+          const snapshot = await storageRef.put(audioBlob);
+          const audioURL = await snapshot.ref.getDownloadURL();
 
-            // Update the database with the Base64 audio and a "new message" flag
-            await db.ref("messages").set({
-              audioBase64: base64Audio,
-              newMessage: true,
-            });
+          // Update the database with the audio URL and a "new message" flag
+          await db.ref("messages").set({
+            audioURL,
+            newMessage: true,
+          });
 
-            alert("P!NG sent!");
-          };
+          alert("P!NG sent with .wav audio message!");
+        } catch (error) {
+          console.error("Error uploading audio file:", error);
+          alert("Failed to upload audio. Please try again.");
+        }
+      };
 
-          reader.readAsDataURL(audioBlob); // Read the blob as a Base64 data URL
-        };
-
-        // Start recording
-        mediaRecorder.start();
-        alert("Recording... Press OK to stop.");
-        setTimeout(() => mediaRecorder.stop(), 5000); // Automatically stop after 5 seconds
-      } catch (error) {
-        console.error("Error recording audio:", error);
-        alert("Failed to record audio. Please try again.");
-      }
-    });
+      // Start recording
+      mediaRecorder.start();
+      alert("Recording... Press OK to stop.");
+      setTimeout(() => mediaRecorder.stop(), 5000); // Automatically stop after 5 seconds
+    } catch (error) {
+      console.error("Error recording audio:", error);
+      alert("Failed to record audio. Please try again.");
+    }
+  });
   </script>
 </body>
 </html>
