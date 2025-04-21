@@ -134,53 +134,115 @@
     window.onload = initMap;
 
     document.getElementById("sendPingButton").addEventListener("click", async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Your browser does not support audio recording.");
-      return;
-    }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Your browser does not support audio recording.");
+        return;
+      }
 
-    try {
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
-      const audioChunks = [];
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        const recorder = audioContext.createScriptProcessor(4096, 1, 1);
 
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
+        const audioChunks = [];
+        source.connect(recorder);
+        recorder.connect(audioContext.destination);
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
-        const fileName = "audio.mp3";
+        recorder.onaudioprocess = (event) => {
+          const inputBuffer = event.inputBuffer.getChannelData(0);
+          audioChunks.push(new Float32Array(inputBuffer));
+        };
 
-        // Upload the .mp3 file to Firebase Storage
-        const storageRef = storage.ref(`app/${fileName}`);
-        try {
-          const snapshot = await storageRef.put(audioBlob);
-          const audioURL = await snapshot.ref.getDownloadURL();
+        // Stop recording after 5 seconds
+        setTimeout(async () => {
+          recorder.disconnect();
+          source.disconnect();
 
-          // Update the database with the audio URL and a "new message" flag
-          await db.ref("messages").set({
-            audioURL,
-            newMessage: true,
-          });
+          // Combine audio chunks into a single buffer
+          const audioBuffer = audioContext.createBuffer(
+            1,
+            audioChunks.reduce((sum, chunk) => sum + chunk.length, 0),
+            44100 // Resample to 44.1 kHz
+          );
 
-          alert("P!NG sent with audio message!");
-        } catch (error) {
-          console.error("Error uploading audio file:", error);
-          alert("Failed to upload audio. Please try again.");
+          let offset = 0;
+          for (const chunk of audioChunks) {
+            audioBuffer.getChannelData(0).set(chunk, offset);
+            offset += chunk.length;
+          }
+
+          // Export the audio buffer to a Blob
+          const wavBlob = await exportWAV(audioBuffer);
+          const fileName = `audio_${Date.now()}.wav`;
+
+          // Upload the .wav file to Firebase Storage
+          const storageRef = storage.ref(`app/${fileName}`);
+          try {
+            const snapshot = await storageRef.put(wavBlob);
+            const audioURL = await snapshot.ref.getDownloadURL();
+
+            // Update the database with the audio URL and a "new message" flag
+            await db.ref("messages").set({
+              audioURL,
+              newMessage: true,
+            });
+
+            alert("P!NG sent with audio message!");
+          } catch (error) {
+            console.error("Error uploading audio file:", error);
+            alert("Failed to upload audio. Please try again.");
+          }
+        }, 5000); // Automatically stop after 5 seconds
+      } catch (error) {
+        console.error("Error recording audio:", error);
+        alert("Failed to record audio. Please try again.");
+      }
+    });
+
+    // Helper function to export audio buffer to WAV
+    async function exportWAV(audioBuffer) {
+      const numChannels = audioBuffer.numberOfChannels;
+      const sampleRate = audioBuffer.sampleRate;
+      const length = audioBuffer.length * numChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+
+      // Write WAV header
+      writeString(view, 0, "RIFF");
+      view.setUint32(4, length - 8, true);
+      writeString(view, 8, "WAVE");
+      writeString(view, 12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * numChannels * 2, true);
+      view.setUint16(32, numChannels * 2, true);
+      view.setUint16(34, 16, true);
+      writeString(view, 36, "data");
+      view.setUint32(40, length - 44, true);
+
+      // Write interleaved PCM samples
+      let offset = 44;
+      for (let i = 0; i < audioBuffer.length; i++) {
+        for (let channel = 0; channel < numChannels; channel++) {
+          const sample = audioBuffer.getChannelData(channel)[i];
+          const intSample = Math.max(-1, Math.min(1, sample)) * 0x7fff;
+          view.setInt16(offset, intSample, true);
+          offset += 2;
         }
-      };
+      }
 
-      // Start recording
-      mediaRecorder.start();
-      alert("Recording... Press OK to stop.");
-      setTimeout(() => mediaRecorder.stop(), 5000); // Automatically stop after 5 seconds
-    } catch (error) {
-      console.error("Error recording audio:", error);
-      alert("Failed to record audio. Please try again.");
+      return new Blob([buffer], { type: "audio/wav" });
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
     }
-  });
   </script>
 </body>
 </html>
