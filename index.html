@@ -151,7 +151,7 @@
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-        const fileName = `audio?${Date.now()}.wav`;
+        const fileName = "audio.wav";
 
         // Upload the .wav file to Firebase Storage
         const storageRef = storage.ref(`app/${fileName}`);
@@ -165,7 +165,7 @@
             newMessage: true,
           });
 
-          alert("P!NG sent with .wav audio message!");
+          alert("P!NG sent with audio message!");
         } catch (error) {
           console.error("Error uploading audio file:", error);
           alert("Failed to upload audio. Please try again.");
