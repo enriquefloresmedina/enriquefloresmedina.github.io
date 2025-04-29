@@ -393,6 +393,90 @@
     
     // Call the function to check for new audio
     checkForNewAudio();
+
+    // Add SOS notification element
+    const sosNotification = document.createElement("div");
+    sosNotification.style.display = "none";
+    sosNotification.style.position = "fixed";
+    sosNotification.style.top = "0";
+    sosNotification.style.left = "0";
+    sosNotification.style.width = "100%";
+    sosNotification.style.height = "100%";
+    sosNotification.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    sosNotification.style.zIndex = "1000";
+    sosNotification.style.display = "none";
+    sosNotification.style.justifyContent = "center";
+    sosNotification.style.alignItems = "center";
+    document.body.appendChild(sosNotification);
+
+    // Create alert box
+    const sosAlertBox = document.createElement("div");
+    sosAlertBox.style.backgroundColor = "#ff3b30";
+    sosAlertBox.style.borderRadius = "10px";
+    sosAlertBox.style.padding = "20px";
+    sosAlertBox.style.width = "80%";
+    sosAlertBox.style.maxWidth = "400px";
+    sosAlertBox.style.textAlign = "center";
+    sosNotification.appendChild(sosAlertBox);
+
+    // Add SOS alert title
+    const sosTitle = document.createElement("h2");
+    sosTitle.textContent = "EMERGENCY SOS ALERT";
+    sosTitle.style.color = "white";
+    sosTitle.style.fontSize = "1.5rem";
+    sosTitle.style.margin = "0 0 15px 0";
+    sosAlertBox.appendChild(sosTitle);
+
+    // Add SOS message
+    const sosMessage = document.createElement("p");
+    sosMessage.textContent = "Emergency assistance needed! The device has triggered an SOS alert.";
+    sosMessage.style.color = "white";
+    sosMessage.style.margin = "0 0 20px 0";
+    sosAlertBox.appendChild(sosMessage);
+
+    // Add Resolve SOS button
+    const resolveButton = document.createElement("button");
+    resolveButton.textContent = "Resolve SOS";
+    resolveButton.style.backgroundColor = "white";
+    resolveButton.style.color = "#ff3b30";
+    resolveButton.style.border = "none";
+    resolveButton.style.borderRadius = "10px";
+    resolveButton.style.padding = "10px 20px";
+    resolveButton.style.fontSize = "1rem";
+    resolveButton.style.fontWeight = "bold";
+    resolveButton.style.cursor = "pointer";
+    sosAlertBox.appendChild(resolveButton);
+
+    // Listen for SOS status changes
+    const sosRef = db.ref("sos/active");
+    sosRef.on("value", (snapshot) => {
+      const isSosActive = snapshot.val() === true;
+      if (isSosActive) {
+        // Show notification when SOS is active
+        sosNotification.style.display = "flex";
+        
+        // Optional: Add sound alert
+        const alertSound = new Audio("https://www.soundjay.com/buttons/sounds/beep-08b.mp3");
+        alertSound.play();
+      } else {
+        // Hide notification when SOS is not active
+        sosNotification.style.display = "none";
+      }
+    });
+
+    // Handle Resolve SOS button click
+    resolveButton.addEventListener("click", async () => {
+      try {
+        // Set sos/active to false
+        await db.ref("sos/active").set(false);
+        
+        // Provide feedback
+        alert("SOS has been resolved.");
+      } catch (error) {
+        console.error("Error resolving SOS:", error);
+        alert("Failed to resolve SOS. Please try again.");
+      }
+    });
   </script>
 </body>
 </html>
