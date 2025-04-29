@@ -4,6 +4,25 @@
   <title>P!NG Location Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
+    #trackingToggleButton {
+      background-color: #008CFF;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 1.2rem;
+      text-align: center;
+      cursor: pointer;
+      margin: 10px 0;
+      display: block;
+      width: 100%;
+      max-width: none;
+    }
+
+    #trackingToggleButton.inactive {
+      background-color: #77C2FF;
+    }
+
     body {
       margin: 0;
       font-family: "Roboto";
@@ -11,6 +30,8 @@
       flex-direction: column;
       height: 39em;
       margin: 0.5em;
+      padding: 0 10px; /* Add some padding to prevent buttons from touching the edge */
+      box-sizing: border-box; /* Ensure padding doesn't affect the total width */
     }
 
     h2 {
@@ -25,7 +46,7 @@
     }
 
     #sendPingButton {
-      background-color: #007BFF;
+      background-color: #3EC275;
       color: white;
       border: none;
       border-radius: 10px;
@@ -33,19 +54,19 @@
       font-size: 1rem;
       text-align: center;
       cursor: pointer;
-      margin: 10px auto;
+      margin: 10px 0;
       display: block;
-      width: 90%;
-      max-width: 300px;
+      width: 100%;
+      max-width: none;
     }
 
     #sendPingButton:hover {
-      background-color: #0056b3;
+      background-color: #89e780;
     }
   </style>
 </head>
 <body>
-  <h2>Live P!NG Location</h2>
+  <button id="trackingToggleButton">Start live tracking</button>
   <div id="map"></div>
   <button id="sendPingButton">Send P!NG</button>
 
@@ -130,6 +151,40 @@
       });
     }
 
+    // Add tracking toggle functionality
+    const trackingToggleButton = document.getElementById("trackingToggleButton");
+    let isTracking = false;
+
+    // Check initial state from Firebase
+    db.ref("location/active").once("value").then((snapshot) => {
+      isTracking = snapshot.val() === true;
+      updateTrackingButtonState();
+    });
+
+    trackingToggleButton.addEventListener("click", async () => {
+      isTracking = !isTracking;
+      
+      try {
+        // Update the database with tracking status
+        await db.ref("location/active").set(isTracking);
+        updateTrackingButtonState();
+      } catch (error) {
+        console.error("Error updating tracking status:", error);
+        alert("Failed to update tracking status. Please try again.");
+        isTracking = !isTracking; // Revert the state change
+      }
+    });
+
+    function updateTrackingButtonState() {
+      if (isTracking) {
+        trackingToggleButton.textContent = "Stop live tracking";
+        trackingToggleButton.classList.add("inactive");
+      } else {
+        trackingToggleButton.textContent = "Start live tracking";
+        trackingToggleButton.classList.remove("inactive");
+      }
+    }
+
     // Call initMap on window load
     window.onload = initMap;
 
@@ -158,17 +213,16 @@
         // Create a "Stop Recording" button
         const stopButton = document.createElement("button");
         stopButton.textContent = "Stop Recording";
-        stopButton.style.backgroundColor = "#FF0000";
+        stopButton.style.backgroundColor = "#994f40";
         stopButton.style.color = "#FFFFFF";
         stopButton.style.border = "none";
         stopButton.style.borderRadius = "10px";
         stopButton.style.padding = "10px 20px";
         stopButton.style.fontSize = "1rem";
         stopButton.style.cursor = "pointer";
-        stopButton.style.margin = "10px auto";
-        stopButton.style.display = "block";
-        stopButton.style.width = "90%";
-        stopButton.style.maxWidth = "300px";
+        stopButton.style.margin = "10px 0";
+        stopButton.style.width = "100%";
+        stopButton.style.maxWidth = "none";
         document.body.appendChild(stopButton);
 
         // Stop recording when the "Stop Recording" button is clicked
@@ -272,10 +326,10 @@
     hearPingButton.style.padding = "10px 20px";
     hearPingButton.style.fontSize = "1rem";
     hearPingButton.style.cursor = "pointer";
-    hearPingButton.style.margin = "10px auto";
+    hearPingButton.style.margin = "10px 0";
     hearPingButton.style.display = "block";
-    hearPingButton.style.width = "90%";
-    hearPingButton.style.maxWidth = "300px";
+    hearPingButton.style.width = "100%";
+    hearPingButton.style.maxWidth = "none";
     document.body.appendChild(hearPingButton);
 
     // Add a "New" tag
@@ -294,7 +348,7 @@
     newTag.style.top = "-60px";
     newTag.style.width = "20px"
     newTag.style.alignSelf = "center";
-    newTag.style.left = "22%";
+    newTag.style.left = "35%";
     hearPingButton.parentNode.insertBefore(newTag, hearPingButton.nextSibling);
 
     // Function to show the "New" tag when a new audio file is uploaded
