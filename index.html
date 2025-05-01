@@ -374,7 +374,7 @@
     hearPingButton.addEventListener("click", async () => {
       try {
         // Get the URL of the audio file from Firebase Storage
-        const storageRef = storage.ref("device/audio.wav");
+        const storageRef = storage.ref("device/recording.wav");
         const audioURL = await storageRef.getDownloadURL();
 
         // Create an audio element and play the audio
