@@ -4,23 +4,16 @@
   <title>P!NG Location Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
-    #trackingToggleButton {
-      background-color: #008CFF;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 20px;
-      font-size: 1.2rem;
-      text-align: center;
-      cursor: pointer;
-      margin: 10px 0;
+    #logo {
       display: block;
-      width: 100%;
-      max-width: none;
+      width: 150px;
+      height: auto;
+      margin: 10px auto;
+      cursor: pointer;
     }
 
-    #trackingToggleButton.inactive {
-      background-color: #77C2FF;
+    .logo-inactive {
+      opacity: 0.6;
     }
 
     body {
@@ -30,7 +23,6 @@
       flex-direction: column;
       height: 39em;
       margin: 0.5em;
-      padding: 0 10px; /* Add some padding to prevent buttons from touching the edge */
       box-sizing: border-box; /* Ensure padding doesn't affect the total width */
     }
 
@@ -66,9 +58,12 @@
   </style>
 </head>
 <body>
-  <button id="trackingToggleButton">Start live tracking</button>
+  <img id="logo" src="logo-wordmark.svg" alt="P!NG Logo">
   <div id="map"></div>
-  <button id="sendPingButton">Send P!NG</button>
+  <div id="buttonsContainer">
+    <button id="hearPingButton" style="background-color: #28a745; color: #FFFFFF; border: none; border-radius: 10px; padding: 10px 20px; font-size: 1rem; cursor: pointer; margin: 10px 0; display: block; width: 100%; max-width: none;">Hear P!NG</button>
+    <button id="sendPingButton">Send P!NG</button>
+  </div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -151,23 +146,23 @@
       });
     }
 
-    // Add tracking toggle functionality
-    const trackingToggleButton = document.getElementById("trackingToggleButton");
+    // Replace tracking toggle button with logo functionality
+    const logoElement = document.getElementById("logo");
     let isTracking = false;
 
     // Check initial state from Firebase
     db.ref("location/active").once("value").then((snapshot) => {
       isTracking = snapshot.val() === true;
-      updateTrackingButtonState();
+      updateLogoState();
     });
 
-    trackingToggleButton.addEventListener("click", async () => {
+    logoElement.addEventListener("click", async () => {
       isTracking = !isTracking;
       
       try {
         // Update the database with tracking status
         await db.ref("location/active").set(isTracking);
-        updateTrackingButtonState();
+        updateLogoState();
       } catch (error) {
         console.error("Error updating tracking status:", error);
         alert("Failed to update tracking status. Please try again.");
@@ -175,103 +170,106 @@
       }
     });
 
-    function updateTrackingButtonState() {
+    function updateLogoState() {
       if (isTracking) {
-        trackingToggleButton.textContent = "Stop live tracking";
-        trackingToggleButton.classList.add("inactive");
+        // Logo is active (tracking enabled)
+        logoElement.classList.remove("logo-inactive");
+        // Optional: You can add a small indicator or text next to the logo if needed
       } else {
-        trackingToggleButton.textContent = "Start live tracking";
-        trackingToggleButton.classList.remove("inactive");
+        // Logo is inactive (tracking disabled)
+        logoElement.classList.add("logo-inactive");
       }
     }
 
     // Call initMap on window load
     window.onload = initMap;
 
-    document.getElementById("sendPingButton").addEventListener("click", async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Your browser does not support audio recording.");
-        return;
+    function setupSendPingButtonHandler() {
+      const sendPingButton = document.getElementById("sendPingButton");
+      if (sendPingButton.clickHandler) {
+        sendPingButton.removeEventListener("click", sendPingButton.clickHandler);
       }
+      sendPingButton.clickHandler = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          alert("Your browser does not support audio recording.");
+          return;
+        }
 
-      try {
-        // Request microphone access
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaStreamSource(stream);
-        const recorder = audioContext.createScriptProcessor(4096, 1, 1);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaStreamSource(stream);
+          const recorder = audioContext.createScriptProcessor(4096, 1, 1);
 
-        const audioChunks = [];
-        source.connect(recorder);
-        recorder.connect(audioContext.destination);
+          const audioChunks = [];
+          source.connect(recorder);
+          recorder.connect(audioContext.destination);
 
-        recorder.onaudioprocess = (event) => {
-          const inputBuffer = event.inputBuffer.getChannelData(0);
-          audioChunks.push(new Float32Array(inputBuffer));
-        };
+          recorder.onaudioprocess = (event) => {
+            const inputBuffer = event.inputBuffer.getChannelData(0);
+            audioChunks.push(new Float32Array(inputBuffer));
+          };
 
-        // Create a "Stop Recording" button
-        const stopButton = document.createElement("button");
-        stopButton.textContent = "Stop Recording";
-        stopButton.style.backgroundColor = "#994f40";
-        stopButton.style.color = "#FFFFFF";
-        stopButton.style.border = "none";
-        stopButton.style.borderRadius = "10px";
-        stopButton.style.padding = "10px 20px";
-        stopButton.style.fontSize = "1rem";
-        stopButton.style.cursor = "pointer";
-        stopButton.style.margin = "10px 0";
-        stopButton.style.width = "100%";
-        stopButton.style.maxWidth = "none";
-        document.body.appendChild(stopButton);
+          const originalButtonColor = sendPingButton.style.backgroundColor || "#3EC275";
+          const originalButtonText = sendPingButton.textContent;
 
-        // Stop recording when the "Stop Recording" button is clicked
-        stopButton.addEventListener("click", async () => {
-          recorder.disconnect();
-          source.disconnect();
-          stream.getTracks().forEach((track) => track.stop()); // Stop the microphone stream
-          document.body.removeChild(stopButton); // Remove the "Stop Recording" button
+          sendPingButton.textContent = "Stop Recording";
+          sendPingButton.style.backgroundColor = "#994f40";
 
-          // Combine audio chunks into a single buffer
-          const audioBuffer = audioContext.createBuffer(
-            1,
-            audioChunks.reduce((sum, chunk) => sum + chunk.length, 0),
-            44100 // Resample to 44.1 kHz
-          );
+          const stopRecordingHandler = async () => {
+            sendPingButton.removeEventListener("click", stopRecordingHandler);
+            recorder.disconnect();
+            source.disconnect();
+            stream.getTracks().forEach((track) => track.stop());
 
-          let offset = 0;
-          for (const chunk of audioChunks) {
-            audioBuffer.getChannelData(0).set(chunk, offset);
-            offset += chunk.length;
-          }
+            sendPingButton.textContent = originalButtonText;
+            sendPingButton.style.backgroundColor = originalButtonColor;
 
-          // Export the audio buffer to a Blob
-          const wavBlob = await exportWAV(audioBuffer);
-          const fileName = "audio.wav";
+            const audioBuffer = audioContext.createBuffer(
+              1,
+              audioChunks.reduce((sum, chunk) => sum + chunk.length, 0),
+              44100
+            );
 
-          // Upload the .wav file to Firebase Storage
-          const storageRef = storage.ref(`app/${fileName}`);
-          try {
-            const snapshot = await storageRef.put(wavBlob);
-            const audioURL = await snapshot.ref.getDownloadURL();
+            let offset = 0;
+            for (const chunk of audioChunks) {
+              audioBuffer.getChannelData(0).set(chunk, offset);
+              offset += chunk.length;
+            }
 
-            // Update the database with the audio URL and a "new message" flag
-            await db.ref("messages_to_device").set({
-              audioURL,
-              newMessage: true,
-            });
+            const wavBlob = await exportWAV(audioBuffer);
+            const fileName = "audio.wav";
 
-            alert("P!NG sent with audio message!");
-          } catch (error) {
-            console.error("Error uploading audio file:", error);
-            alert("Failed to upload audio. Please try again.");
-          }
-        });
-      } catch (error) {
-        console.error("Error recording audio:", error);
-        alert("Failed to record audio. Please try again.");
-      }
-    });
+            const storageRef = storage.ref(`app/${fileName}`);
+            try {
+              const snapshot = await storageRef.put(wavBlob);
+              const audioURL = await snapshot.ref.getDownloadURL();
+
+              await db.ref("messages_to_device").set({
+                audioURL,
+                newMessage: true,
+              });
+
+              alert("P!NG sent with audio message!");
+              setupSendPingButtonHandler();
+            } catch (error) {
+              console.error("Error uploading audio file:", error);
+              alert("Failed to upload audio. Please try again.");
+              setupSendPingButtonHandler();
+            }
+          };
+
+          sendPingButton.removeEventListener("click", sendPingButton.clickHandler);
+          sendPingButton.addEventListener("click", stopRecordingHandler);
+        } catch (error) {
+          console.error("Error recording audio:", error);
+          alert("Failed to record audio. Please try again.");
+        }
+      };
+      sendPingButton.addEventListener("click", sendPingButton.clickHandler);
+    }
+
+    setupSendPingButtonHandler();
 
     // Helper function to export audio buffer to WAV
     async function exportWAV(audioBuffer) {
@@ -317,39 +315,33 @@
     }
 
     // Add a "Hear P!NG" button
-    const hearPingButton = document.createElement("button");
-    hearPingButton.textContent = "Hear P!NG";
-    hearPingButton.style.backgroundColor = "#28a745";
-    hearPingButton.style.color = "#FFFFFF";
-    hearPingButton.style.border = "none";
-    hearPingButton.style.borderRadius = "10px";
-    hearPingButton.style.padding = "10px 20px";
-    hearPingButton.style.fontSize = "1rem";
-    hearPingButton.style.cursor = "pointer";
-    hearPingButton.style.margin = "10px 0";
-    hearPingButton.style.display = "block";
-    hearPingButton.style.width = "100%";
-    hearPingButton.style.maxWidth = "none";
-    document.body.appendChild(hearPingButton);
-
-    // Add a "New" tag
+    const hearPingButton = document.getElementById("hearPingButton");
+    
+    // Modified "New" tag code
     const newTag = document.createElement("span");
     newTag.textContent = "!";
     newTag.style.backgroundColor = "#FF0000";
     newTag.style.color = "#FFFFFF";
     newTag.style.borderRadius = "50%";
-    newTag.style.padding = "6px 5px";
+    newTag.style.padding = "4px 6px";
     newTag.style.fontSize = "1rem";
     newTag.style.fontWeight = "bold";
-    newTag.style.marginLeft = "20px";
     newTag.style.textAlign = "center";
     newTag.style.display = "inline-block";
-    newTag.style.position = "relative";
-    newTag.style.top = "-60px";
-    newTag.style.width = "20px"
-    newTag.style.alignSelf = "center";
-    newTag.style.left = "35%";
-    hearPingButton.parentNode.insertBefore(newTag, hearPingButton.nextSibling);
+    newTag.style.position = "absolute"; // Change to absolute positioning
+    newTag.style.zIndex = "100"; // Add z-index to ensure it's on top
+    newTag.style.width = "15px";
+    newTag.style.height = "18px";
+    newTag.style.top = "5px"; // Position from top
+    newTag.style.right = "10px"; // Position from right
+    newTag.style.lineHeight = "16px"; // Center text vertically
+    
+    // Make the hearPingButton's parent relative for proper tag positioning
+    const buttonContainer = hearPingButton.parentNode;
+    buttonContainer.style.position = "relative";
+    
+    // Add the tag to the button container instead of as a sibling
+    buttonContainer.appendChild(newTag);
 
     // Function to show the "New" tag when a new audio file is uploaded
     async function checkForNewAudio() {
@@ -358,14 +350,13 @@
         const data = snapshot.val();
         if (data && data.newMessage) {
           // Show the "New" tag
-          if (!document.body.contains(newTag)) {
-            hearPingButton.parentNode.insertBefore(newTag, hearPingButton.nextSibling);
+          if (!buttonContainer.contains(newTag)) {
+            buttonContainer.appendChild(newTag);
           }
+          newTag.style.display = "inline-block";
         } else {
           // Hide the "New" tag if no new message
-          if (document.body.contains(newTag)) {
-            newTag.remove();
-          }
+          newTag.style.display = "none";
         }
       });
     }
@@ -381,9 +372,9 @@
         const audio = new Audio(audioURL);
         audio.play();
 
-        if (newTag) {
-          newTag.remove();
-        }
+        // Hide the newTag
+        newTag.style.display = "none";
+        
         await db.ref("messages_from_device").update({ newMessage: false });
       } catch (error) {
         console.error("Error fetching audio file:", error);
