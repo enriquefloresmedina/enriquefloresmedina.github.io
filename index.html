@@ -11,9 +11,24 @@
       margin: 10px auto;
       cursor: pointer;
     }
-
-    .logo-inactive {
-      opacity: 0.6;
+    
+    #logoContainer {
+      position: relative;
+      width: fit-content;
+      margin: 0px auto;
+    }
+    
+    #trackingIndicator {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background-color: #3EC275;
+      border-radius: 50%;
+      top: 32px;
+      right: -15px;
+      display: none; /* Hidden by default */
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      z-index: 10001;
     }
 
     body {
@@ -58,7 +73,12 @@
   </style>
 </head>
 <body>
-  <img id="logo" src="logo-wordmark.svg" alt="P!NG Logo">
+  <!-- Replace the logo with a container that includes both logo and indicator -->
+  <div id="logoContainer">
+    <img id="logo" src="logo-wordmark.svg" alt="P!NG Logo">
+    <div id="trackingIndicator"></div>
+  </div>
+  
   <div id="map"></div>
   <div id="buttonsContainer">
     <button id="hearPingButton" style="background-color: #28a745; color: #FFFFFF; border: none; border-radius: 10px; padding: 10px 20px; font-size: 1rem; cursor: pointer; margin: 10px 0; display: block; width: 100%; max-width: none;">Hear P!NG</button>
@@ -146,8 +166,9 @@
       });
     }
 
-    // Replace tracking toggle button with logo functionality
+    // Update the logoElement reference to match the new structure
     const logoElement = document.getElementById("logo");
+    const trackingIndicator = document.getElementById("trackingIndicator");
     let isTracking = false;
 
     // Check initial state from Firebase
@@ -156,6 +177,7 @@
       updateLogoState();
     });
 
+    // Keep the click listener on the logo
     logoElement.addEventListener("click", async () => {
       isTracking = !isTracking;
       
@@ -172,12 +194,11 @@
 
     function updateLogoState() {
       if (isTracking) {
-        // Logo is active (tracking enabled)
-        logoElement.classList.remove("logo-inactive");
-        // Optional: You can add a small indicator or text next to the logo if needed
+        // Show the green indicator when tracking is active
+        trackingIndicator.style.display = "block";
       } else {
-        // Logo is inactive (tracking disabled)
-        logoElement.classList.add("logo-inactive");
+        // Hide the green indicator when tracking is inactive
+        trackingIndicator.style.display = "none";
       }
     }
 
